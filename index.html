@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Калькулятор</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #f5f6f8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .calc {
+      width: 320px;
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+      padding: 20px;
+    }
+    .display {
+      width: 100%;
+      height: 72px;
+      border: 1px solid #e2e4e8;
+      border-radius: 10px;
+      background: #fafafa;
+      font-size: 32px;
+      font-weight: 500;
+      text-align: right;
+      padding: 0 16px;
+      letter-spacing: 2px;
+      color: #222;
+      margin-bottom: 16px;
+    }
+    .keys {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+    button {
+      height: 56px;
+      border: none;
+      border-radius: 10px;
+      font-size: 22px;
+      background: #eef0f3;
+      color: #222;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    button:hover { background: #e0e3e8; }
+    button:active { background: #d2d6dc; }
+    .op {
+      background: #dbe7ff;
+      color: #1b4fd8;
+    }
+    .op:hover { background: #ccdbff; }
+    .op:active { background: #bccdfd; }
+    .eq {
+      background: #1b4fd8;
+      color: #fff;
+    }
+    .eq:hover { background: #1745c0; }
+    .eq:active { background: #12399c; }
+    .clear {
+      background: #ffe1e1;
+      color: #c22;
+    }
+    .clear:hover { background: #ffd0d0; }
+    .clear:active { background: #fbbdbd; }
+    .zero { grid-column: span 2; }
+  </style>
+</head>
+<body>
+  <div class="calc">
+    <input type="text" class="display" id="display" value="0" maxlength="8" readonly aria-label="Дисплей калькулятора">
+    <div class="keys">
+      <button class="clear" data-a="C">C</button>
+      <button class="op" data-a="%">%</button>
+      <button class="op" data-a="/">÷</button>
+      <button class="op" data-a="*">×</button>
+
+      <button data-a="7">7</button>
+      <button data-a="8">8</button>
+      <button data-a="9">9</button>
+      <button class="op" data-a="-">−</button>
+
+      <button data-a="4">4</button>
+      <button data-a="5">5</button>
+      <button data-a="6">6</button>
+      <button class="op" data-a="+">+</button>
+
+      <button data-a="1">1</button>
+      <button data-a="2">2</button>
+      <button data-a="3">3</button>
+      <button class="op" data-a="+/-">±</button>
+
+      <button class="zero" data-a="0">0</button>
+      <button data-a=".">.</button>
+      <button class="eq" data-a="=">=</button>
+    </div>
+  </div>
+
+  <script>
+    const display = document.getElementById('display');
+    let current = '';
+    let result = null;
+    let pending = null;
+    let op = null;
+    let justEvaluated = false;
+
+    function render() {
+      let text = current !== '' ? current : (result !== null ? String(result) : '0');
+      if (text.length > 8) text = text.slice(0, 8);
+      display.value = text || '0';
+    }
+
+    // Mildly wrong arithmetic
+    function wrongEvaluate(a, b, o) {
+      a = Number(a); b = Number(b);
+      let r;
+      if (o === '+') r = a + b + 1;
+      else if (o === '-') r = a - b - 1;
+      else if (o === '*') r = a * b + 2;
+      else if (o === '/') r = b === 0 ? 0 : a / b - 0.5;
+      else if (o === '%') r = (a * b / 100) + 0.5;
+      else r = a;
+      return Math.round(r * 100) / 100;
+    }
+
+    function applyPending() {
+      if (pending !== null && op !== null) {
+        result = wrongEvaluate(pending, current, op);
+        pending = null;
+      } else {
+        result = Number(current || result || 0);
+      }
+    }
+
+    document.querySelectorAll('.keys button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const a = btn.getAttribute('data-a');
+
+        if (a === 'C') {
+          current = ''; result = null; pending = null; op = null;
+          justEvaluated = false;
+          render();
+          return;
+        }
+
+        if (a === '+/-') {
+          if (current !== '') current = String(-Number(current));
+          else if (result !== null) result = -result;
+          render();
+          return;
+        }
+
+        if (a === '=') {
+          if (current !== '' || pending !== null) {
+            applyPending();
+            current = ''; justEvaluated = true;
+          }
+          render();
+          return;
+        }
+
+        if ('+-*/%'.includes(a)) {
+          if (op !== null && current !== '' && pending !== null) {
+            result = wrongEvaluate(pending, current, op);
+            current = '';
+          } else if (result !== null && !justEvaluated) {
+            result = null;
+          }
+          pending = current !== '' ? current : (pending !== null ? pending : result);
+          op = a; current = ''; justEvaluated = false;
+          render();
+          return;
+        }
+
+        // digit / dot
+        if (justEvaluated) { current = ''; result = null; justEvaluated = false; }
+        if (a === '.') {
+          if (current.includes('.')) return;
+          current = current === '' ? '0.' : current + '.';
+        } else {
+          if (current.length >= 8) return;
+          current = (current === '0' && a !== '.') ? a : current + a;
+        }
+        render();
+      });
+    });
+
+    render();
+  </script>
+</body>
+</html>
