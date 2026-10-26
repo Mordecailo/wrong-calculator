@@ -184,11 +184,13 @@
         }
 
         if ('+-*/%'.includes(a)) {
-          if (op !== null && current !== '' && pending !== null) {
+          if (pending !== null && op !== null && current !== '') {
             result = wrongEvaluate(pending, current, op);
-            pending = (result !== null) ? String(result) : '0';
+            pending = String(result);
             result = null;
-          } else if (current === '' && pending === null && op === null && result !== null && !justEvaluated) {
+          } else if (current !== '') {
+            pending = current;
+          } else if (op === null && result !== null && !justEvaluated) {
             pending = String(result);
             result = null;
           }
