@@ -111,8 +111,21 @@
     let op = null;
     let justEvaluated = false;
 
+    function opSymbol(o) {
+      return { '+': '+', '-': '−', '*': '×', '/': '÷', '%': '%' }[o] || o;
+    }
+
     function render() {
-      let text = current !== '' ? current : (result !== null ? String(result) : '0');
+      let text;
+      if (pending !== null && op !== null) {
+        text = pending + opSymbol(op) + current;
+      } else if (current !== '') {
+        text = current;
+      } else if (result !== null) {
+        text = String(result);
+      } else {
+        text = '0';
+      }
       if (text.length > 8) text = text.slice(0, 8);
       display.value = text || '0';
     }
@@ -163,7 +176,8 @@
         if (a === '=') {
           if (current !== '' || pending !== null) {
             applyPending();
-            current = ''; justEvaluated = true;
+            pending = null; op = null; current = '';
+            justEvaluated = true;
           }
           render();
           return;
@@ -172,11 +186,12 @@
         if ('+-*/%'.includes(a)) {
           if (op !== null && current !== '' && pending !== null) {
             result = wrongEvaluate(pending, current, op);
-            current = '';
-          } else if (result !== null && !justEvaluated) {
+            pending = (result !== null) ? String(result) : '0';
+            result = null;
+          } else if (current === '' && pending === null && op === null && result !== null && !justEvaluated) {
+            pending = String(result);
             result = null;
           }
-          pending = current !== '' ? current : (pending !== null ? pending : result);
           op = a; current = ''; justEvaluated = false;
           render();
           return;
